@@ -38,7 +38,14 @@ cd heatwave-predictor
 
 Install dependencies:
 
-pip install -r requirements.txt
+pip install
+
+streamlit>=1.32.0
+pandas>=2.0.0
+numpy>=1.23.0
+matplotlib>=3.7.0
+scikit-learn>=1.2.0
+tensorflow>=2.12.0
 
 Create a data/ folder and add the required datasets:
 
