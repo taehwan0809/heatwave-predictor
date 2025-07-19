@@ -1,59 +1,38 @@
-# ☀️ AI-Powered Heatwave Forecasting
+☀️ AI-Powered Heatwave Prediction and Response Guide
+A Streamlit-based web application that predicts future heatwave trends using 10 years of temperature data and provides tailored response guides for various occupations.
 
-A Streamlit-based web application that predicts heatwaves in South Korea for the next 7 days using LSTM (Long Short-Term Memory) deep learning models trained on past temperature data.
+🔍 Features
+✅ Region Selection: Predict heatwaves for multiple cities (e.g., Seoul, Busan, Daegu, Paju).
 
-## 📌 Features
+🧠 LSTM-based Prediction: Uses deep learning (LSTM) to analyze 10 years of temperature data and forecast upcoming heatwaves.
 
-- Predicts the next 7 days of maximum daily temperature
-- Classifies and visualizes potential heatwave days
-- Provides daily heat safety recommendations
-- User-friendly web UI with navigation tabs
+👷 Job-Specific Response Guides: Provides customized safety tips and coping strategies for different professions (e.g., outdoor workers, office workers, seniors).
 
-## 📁 Dataset
+🌐 User-Friendly Interface: Built with Streamlit for real-time interaction and easy accessibility.
 
-This project uses two datasets:
+🚀 How It Works
+Data Input: Loads regional temperature data from CSV files.
 
-- 2015~2025.csv: Historical maximum temperature data (2015–2025)
-- 한 달.csv: Recent daily temperature data (most recent month)
+Model Prediction: LSTM model predicts future max temperatures.
 
-> 📌 **Data Source**:  
-> Both datasets were sourced from the [Korean Public Data Portal (공공데이터포털)](https://www.data.go.kr), specifically from temperature records provided by the Korea Meteorological Administration (KMA).
+Result Display: Shows graph and interpretation of predicted heatwaves.
 
-You may replace or supplement these datasets with real-time API data in future versions.
+Custom Guide: Displays personalized advice based on selected job type.
 
-## 🔧 Tech Stack
+🛠 Tech Stack
+Python
 
-- Python 3.11+
-- Streamlit
-- TensorFlow / Keras
-- NumPy, Pandas
-- Scikit-Learn
-- Matplotlib
+TensorFlow / Keras
 
-- ⚙️ How to Run
-Clone this repository:
+Streamlit
 
-git clone https://github.com/yourusername/heatwave-predictor.git
+Pandas, NumPy, Matplotlib
+
+📌 Getting Started
+bash
+복사
+편집
+git clone https://github.com/your-username/heatwave-predictor.git
 cd heatwave-predictor
-
-Install dependencies:
-
-pip install
-
-streamlit>=1.32.0
-pandas>=2.0.0
-numpy>=1.23.0
-matplotlib>=3.7.0
-scikit-learn>=1.2.0
-tensorflow>=2.12.0
-
-Create a data/ folder and add the required datasets:
-
-heatwave-predictor/
-├── data/
-│   ├── 2015~2025.csv
-│   └── 한 달.csv
-
-Run the Streamlit app:
-
-python -m streamlit run app.py
+pip install -r requirements.txt
+streamlit run app.py
