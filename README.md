@@ -1,38 +1,52 @@
-☀️ AI-Powered Heatwave Prediction and Response Guide
-A Streamlit-based web application that predicts future heatwave trends using 10 years of temperature data and provides tailored response guides for various occupations.
+# 🔥 HeatWavePredictor: AI-Based Heatwave Forecast & Response Guide
 
-🔍 Features
-✅ Region Selection: Predict heatwaves for multiple cities (e.g., Seoul, Busan, Daegu, Paju).
+## 🌍 Overview
 
-🧠 LSTM-based Prediction: Uses deep learning (LSTM) to analyze 10 years of temperature data and forecast upcoming heatwaves.
+**HeatWavePredictor** is a user-friendly AI-powered web application that forecasts future heatwaves using 10 years of temperature data. The app not only predicts extreme temperatures across different regions but also provides tailored response guides based on users’ jobs or situations. It aims to help people prepare and respond effectively to future heat risks.
 
-👷 Job-Specific Response Guides: Provides customized safety tips and coping strategies for different professions (e.g., outdoor workers, office workers, seniors).
+## 🧠 Features
 
-🌐 User-Friendly Interface: Built with Streamlit for real-time interaction and easy accessibility.
+* 📈 **AI Forecast**: Uses LSTM (Long Short-Term Memory) neural networks to analyze temperature trends over the past decade and predict upcoming extreme heat.
+* 🌐 **Regional Selection**: Users can choose between major Korean cities like Seoul, Busan, Daegu, and Paju.
+* 🧑‍🏭 **Job-Based Guide**: Provides specific heatwave response tips based on the user's job or daily activity (e.g., construction workers, delivery workers, elderly, students).
+* 🖥 **Real-Time Web App**: Built with [Streamlit](https://streamlit.io), enabling quick, interactive AI analysis and visualization directly in your browser.
 
-🚀 How It Works
-Data Input: Loads regional temperature data from CSV files.
+## 🚀 How to Run
 
-Model Prediction: LSTM model predicts future max temperatures.
+1. Clone the repository:
 
-Result Display: Shows graph and interpretation of predicted heatwaves.
+   ```bash
+   git clone https://github.com/your-username/heatwave-predictor.git
+   cd heatwave-predictor
+   ```
 
-Custom Guide: Displays personalized advice based on selected job type.
+2. Install required libraries:
 
-🛠 Tech Stack
-Python
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-TensorFlow / Keras
+3. Run the app:
 
-Streamlit
+   ```bash
+   streamlit run app.py
+   ```
 
-Pandas, NumPy, Matplotlib
+## 📊 Technology Stack
 
-📌 Getting Started
-bash
-복사
-편집
-git clone https://github.com/your-username/heatwave-predictor.git
-cd heatwave-predictor
-pip install -r requirements.txt
-streamlit run app.py
+* **Python**
+* **Pandas, NumPy** – Data preprocessing
+* **TensorFlow / Keras** – LSTM deep learning model
+* **Streamlit** – Frontend dashboard
+* **Matplotlib, Plotly** – Graphs and visualization
+
+## 💡 Future Direction
+
+* ⌚️ **Integration with Wearables**: Connect with smartwatches to give real-time heat alerts and health monitoring.
+* 📲 **Mobile App**: Develop a lightweight version for smartphones.
+* 🌡 **Live Weather API**: Integrate real-time weather data from national weather APIs.
+* 🌍 **Global Expansion**: Adapt model to other countries’ climate data.
+
+## 🙌 Project Motivation
+
+With increasing global temperatures, heatwaves are becoming a serious public health threat. This project aims to use AI not only to predict but also **prepare people** for these dangers, especially those in vulnerable jobs or age groups.
