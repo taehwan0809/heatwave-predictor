@@ -37,10 +37,25 @@ st.markdown("### 한국 주요 도시의 여름철 기온 및 일교차 예측 �
 
 # 데이터 경로
 DATA_FILES = {
-    "서울": "data/서울_전체정리본.csv",
-    "부산": "data/부산_전체정리본.csv",
-    "대구": "data/대구_전체정리본.csv",
-    "파주": "data/파주_전체정리본.csv",
+    "서울": {"temp": "data/서울/서울 2015~2025 기온.csv",
+        "humid": "data/서울/서울 2015~2025 습도.csv",
+        "rain": "data/서울/서울 2015~2025 강수량.csv",},
+
+    "부산": {
+        "temp": "data/부산/부산 2015~2025 기온.csv",
+        "humid": "data/부산/부산 2015~2025 습도.csv",
+        "rain": "data/부산/부산 2015~2025 강수량.csv",
+    },
+    "대구": {
+        "temp": "data/대구/대구 2015~2025 기온.csv",
+        "humid": "data/대구/대구 2015~2025 습도.csv",
+        "rain": "data/대구/대구 2015~2025 강수량.csv",
+    },
+    "파주": {
+        "temp": "data/파주/파주 2015~2025 기온.csv",
+        "humid": "data/파주/파주 2015~2025 습도.csv",
+        "rain": "data/파주/파주 2015~2025 강수량.csv",
+    },
 }
 
 # 상태 관리
@@ -58,19 +73,74 @@ if st.button("다시 선택"):
 
 # 예측 함수
 # 1) 전체 데이터 사용, 2) 스케일러 분리 학습, 3) 시퀀스 길이 늘리기
-def predict_column(df, col):
-    series = df[['날짜', col]].dropna().sort_values('날짜')
+def predict_multivariate(df, target_col):
+    feature_cols = ['최고기온(℃)', '습도', '강수량']
+
+    for col in feature_cols:
+        if col not in df.columns:
+            raise KeyError(f"❌ 데이터에 '{col}' 컬럼이 없습니다. 현재 컬럼: {df.columns.tolist()}")
+
+    target_idx = feature_cols.index(target_col)
+
+    features = df[feature_cols].dropna().values
+    scaler = MinMaxScaler().fit(features)
+    scaled = scaler.transform(features)
+
+    seq_len = 30
+    X, y = [], []
+    for i in range(len(scaled) - seq_len):
+        X.append(scaled[i:i+seq_len])
+        y.append(scaled[i+seq_len][target_idx])
+    X, y = np.array(X), np.array(y)
+
+    model = Sequential([
+        Input(shape=(seq_len, X.shape[2])),
+        LSTM(64, activation='relu'),
+        Dense(1)
+    ])
+    model.compile('adam', 'mse')
+    model.fit(X, y, epochs=20, verbose=0)
+
+    seq_vals = scaled[-seq_len:]
+    preds = []
+    for _ in range(30):
+        p = model.predict(seq_vals.reshape(1,seq_len,X.shape[2]), verbose=0)[0][0]
+        preds.append(p)
+        next_row = seq_vals[-1].copy()
+        next_row[target_idx] = p
+        seq_vals = np.append(seq_vals[1:], [next_row], axis=0)
+
+    # 스케일 복원
+    pred_array = np.zeros((len(preds), len(feature_cols)))
+    pred_array[:, target_idx] = preds
+    preds_rescaled = scaler.inverse_transform(pred_array)[:, target_idx]
+    return preds_rescaled
+
+def predict_heatwave_end(dates, temps):
+    # 30℃ 이하 3일 연속이면 종료일로 판단
+    for i in range(len(temps) - 2):
+        if temps[i] <= 30 and temps[i+1] <= 30 and temps[i+2] <= 30:
+            return dates[i].strftime("%Y-%m-%d")
+    return "올해 여름 내내 30℃ 이상 유지"
+
+
+
+def predict_yearly(df, col, year):
+    # 1. 데이터 전처리
+    series = df[['일시', col]].dropna().sort_values('일시')
     data_full = series[[col]].values.reshape(-1,1)
     scaler = MinMaxScaler().fit(data_full)
     scaled_full = scaler.transform(data_full)
 
-    seq_len = 30  # 하루치 데이터 30일치 학습
+    # 2. 학습 데이터 준비
+    seq_len = 30
     X, y = [], []
     for i in range(len(scaled_full) - seq_len):
         X.append(scaled_full[i:i+seq_len])
         y.append(scaled_full[i+seq_len])
     X, y = np.array(X), np.array(y)
 
+    # 3. LSTM 모델 학습
     model = Sequential([
         Input(shape=(seq_len,1)),
         LSTM(50, activation='relu'),
@@ -79,28 +149,97 @@ def predict_column(df, col):
     model.compile('adam', 'mse')
     model.fit(X, y, epochs=50, verbose=0)
 
-    # 마지막 시퀀스로부터 7일 예측
+    # 4. 미래 2년치(730일) 예측
     seq_vals = scaled_full[-seq_len:]
     preds = []
-    for _ in range(7):
+    for _ in range(365*2):  
         p = model.predict(seq_vals.reshape(1,seq_len,1),verbose=0)[0][0]
         preds.append(p)
         seq_vals = np.append(seq_vals[1:], [[p]], axis=0)
 
-    return scaler.inverse_transform(np.array(preds).reshape(-1,1)).flatten()
+    # 5. 예측값을 실제 값으로 변환
+    preds_inv = scaler.inverse_transform(np.array(preds).reshape(-1,1)).flatten()
+    future_dates = pd.date_range(df['일시'].max()+pd.Timedelta(days=1), periods=len(preds))
+
+    # 6. 원하는 연도(year)의 6~8월 평균
+    future_df = pd.DataFrame({"일시": future_dates, col: preds_inv})
+    summer_df = future_df[(future_df['일시'].dt.year == year) & (future_df['일시'].dt.month.isin([6,7,8]))]
+    return summer_df[col].mean()
+
+
+def load_and_clean_csv(path):
+    # skiprows 제거 → 헤더 그대로 읽기
+    df = pd.read_csv(path, encoding="cp949")
+
+    df.columns = df.columns.str.strip().str.replace(r"[\t\n\r]", "", regex=True)
+
+    # '일시' 컬럼 찾기
+    candidates = [c for c in df.columns if "일시" in c or "날짜" in c or "관측" in c]
+    if not candidates:
+        raise ValueError(f"⚠️ '{path}' 파일에서 '일시' 컬럼을 찾을 수 없습니다. 현재 컬럼: {df.columns.tolist()}")
+    date_col = candidates[0]
+
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+    df = df.rename(columns={date_col: "일시"})
+    return df
+
+
+
+
+    
+
 
 
 # 메인
 if region:
-    # 데이터 로드 및 날짜 설정
-    df = pd.read_csv(DATA_FILES[region])
-    df['날짜'] = pd.to_datetime(df['날짜'])
+    # 데이터 로드 및 일시 설정
+    
+    df_temp = load_and_clean_csv(DATA_FILES[region]["temp"])
+    df_humid = load_and_clean_csv(DATA_FILES[region]["humid"])
+    df_rain  = load_and_clean_csv(DATA_FILES[region]["rain"])
+
+    # 날짜 단위로 통일
+    df_temp['일시'] = pd.to_datetime(df_temp['일시']).dt.date
+    df_humid['일시'] = pd.to_datetime(df_humid['일시']).dt.date
+    df_rain['일시']  = pd.to_datetime(df_rain['일시']).dt.date
+
+
+    df = df_temp.merge(df_humid, on="일시", how="inner") \
+            .merge(df_rain, on="일시", how="inner")
+    
+    if "강수량(mm)" in df.columns:
+        df["강수량(mm)"] = df["강수량(mm)"].fillna(0)
+
+    df = df.sort_values("일시").interpolate()
+
+    numeric_cols = ["최고기온(℃)", "최저기온(℃)", "습도", "강수량"]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    rename_map = {
+        "강수량(mm)": "강수량",
+        "최고기온(℃)": "최고기온(℃)",
+        "최저기온(℃)": "최저기온(℃)",
+        "평균기온(℃)": "평균기온(℃)",
+        "습도": "습도"
+    }
+    df = df.rename(columns=rename_map)
+    df.columns = df.columns.str.strip()
+
+
     today = pd.Timestamp.today().normalize()
-    dates = [today + pd.Timedelta(days=i+1) for i in range(7)]
+    dates = [today + pd.Timedelta(days=i+1) for i in range(30)]
 
     # 예측
-    temps = predict_column(df, '최고기온')
-    gaps  = predict_column(df, '일교차')
+    temps = predict_multivariate(df, '최고기온(℃)')
+
+    low_col = [c for c in df.columns if "최저" in c][0]
+    df['일교차'] = df['최고기온(℃)'] - df[low_col]
+
+    gaps  = df['일교차'].tail(30).values  # 최근 30일치만 사용
+
+    
 
     # 팝업 경고 및 효과
     max_temp = max(temps)
@@ -119,11 +258,11 @@ if region:
     # 예측 요약 테이블
     st.subheader("📋 예측 요약")
     df_tbl = pd.DataFrame({
-        '날짜':     [d.strftime('%m-%d') for d in dates],
-        '최고기온': temps,
+        '일시':     [d.strftime('%m-%d') for d in dates],
+        '최고기온(℃)': temps,
         '일교차':   gaps
     })
-    st.dataframe(df_tbl.style.format({'최고기온':'{:.1f}℃','일교차':'{:.1f}℃'}), use_container_width=True)
+    st.dataframe(df_tbl.style.format({'최고기온(℃)':'{:.1f}℃','일교차':'{:.1f}℃'}), use_container_width=True)
 
     # KPI 카드
     avg_temp = np.mean(temps)
@@ -131,7 +270,7 @@ if region:
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(
-            f"<div class='metric-box temp-box'><h3>7일 평균<br>최고기온</h3><h1>{avg_temp:.1f}℃</h1></div>",
+            f"<div class='metric-box temp-box'><h3>7일 평균<br>최고기온(℃)</h3><h1>{avg_temp:.1f}℃</h1></div>",
             unsafe_allow_html=True
         )
     with col2:
@@ -139,6 +278,31 @@ if region:
             f"<div class='metric-box gap-box'><h3>7일 평균<br>일교차</h3><h1>{avg_gap:.1f}℃</h1></div>",
             unsafe_allow_html=True
         )
+    st.markdown("---")
+        # 2026년, 2027년 예측 추가
+    future_2026 = predict_yearly(df, '최고기온(℃)', 2026)
+    future_2027 = predict_yearly(df, '최고기온(℃)', 2027)
+
+    col3, col4 = st.columns(2)
+    with col3:
+        st.markdown(
+            f"<div class='metric-box temp-box'><h3>2026년 여름<br>예상 평균 최고기온(℃)</h3><h1>{future_2026:.1f}℃</h1></div>",
+            unsafe_allow_html=True
+        )
+    with col4:
+        st.markdown(
+            f"<div class='metric-box temp-box'><h3>2027년 여름<br>예상 평균 최고기온(℃)</h3><h1>{future_2027:.1f}℃</h1></div>",
+            unsafe_allow_html=True
+        )
+
+
+        # 더위 종료일 예측
+heatwave_end = predict_heatwave_end(dates, temps)
+
+st.subheader("🌅 더위 종료일 예측")
+st.markdown(f"**예상 종료일:** {heatwave_end}")
+
+
 
 
 
